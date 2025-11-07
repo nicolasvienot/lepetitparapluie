@@ -12,7 +12,7 @@ const byte DNS_PORT = 53;
 const char* CONFIG_DOMAIN = "lepetitparapluie.config";
 const int LED_PIN = LED_BUILTIN;
 
-String apiUrl = "http://b9b4bb4a4990.ngrok-free.app/api/will-it-rain?location=Brussels";
+String apiUrl = "https://lepetitparapluie.nicolasvienot.com/api/will-it-rain?location=Brussels";
 bool ledOn = false;
 unsigned long lastApiCheck = 0;
 const unsigned long apiInterval = 5UL * 60UL * 1000UL; // 5 min
