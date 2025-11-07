@@ -11,8 +11,10 @@ DNSServer dnsServer;
 const byte DNS_PORT = 53;
 const char* CONFIG_DOMAIN = "lepetitparapluie.config";
 const int LED_PIN = LED_BUILTIN;
+const char* API_BASE_URL = "https://lepetitparapluie.nicolasvienot.com/api/will-it-rain?location=";
+const char* DEFAULT_LOCATION = "Brussels";
 
-String apiUrl = "https://lepetitparapluie.nicolasvienot.com/api/will-it-rain?location=Brussels";
+String location = DEFAULT_LOCATION;
 bool ledOn = false;
 unsigned long lastApiCheck = 0;
 const unsigned long apiInterval = 5UL * 60UL * 1000UL; // 5 min
@@ -53,6 +55,42 @@ void eraseWiFiCredentials() {
   if (!LittleFS.begin()) return;
   if (LittleFS.exists("/wifi.txt")) LittleFS.remove("/wifi.txt");
   addLog("🧹 WiFi credentials erased");
+}
+
+bool saveLocation(const String& loc) {
+  if (!LittleFS.begin()) return false;
+  File f = LittleFS.open("/location.txt", "w");
+  if (!f) return false;
+  f.println(loc);
+  f.close();
+  location = loc;
+  addLog("✅ Location saved: " + loc);
+  return true;
+}
+
+bool loadLocation() {
+  if (!LittleFS.begin()) return false;
+  if (!LittleFS.exists("/location.txt")) {
+    location = DEFAULT_LOCATION;
+    return false;
+  }
+  File f = LittleFS.open("/location.txt", "r");
+  if (!f) {
+    location = DEFAULT_LOCATION;
+    return false;
+  }
+  location = f.readStringUntil('\n');
+  location.trim();
+  f.close();
+  if (location.length() == 0) {
+    location = DEFAULT_LOCATION;
+    return false;
+  }
+  return true;
+}
+
+String buildApiUrl() {
+  return String(API_BASE_URL) + location;
 }
 
 void setLed(bool on) {
@@ -97,6 +135,11 @@ void handleRootNormal() {
         .logs li{padding:6px 8px;border-bottom:1px solid #eee;}
         .logs li:last-child{border-bottom:none;}
         .empty{color:#888;font-size:13px;}
+        .location-section{margin:20px 0;padding:15px;background:#f9f9f9;border-radius:6px;}
+        .location-section h4{margin-top:0;margin-bottom:10px;font-size:16px;}
+        .location-form{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;}
+        .location-input{padding:8px 12px;border:1px solid #ddd;border-radius:4px;font-size:14px;width:200px;max-width:100%;}
+        .location-display{color:#666;font-size:13px;margin-top:8px;}
         .actions{margin-top:20px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;}
         .btn{display:inline-block;padding:8px 16px;border-radius:4px;text-decoration:none;font-size:14px;border:1px solid transparent;cursor:pointer;}
         .btn-primary{background:#4CAF50;color:white;border-color:#4CAF50;}
@@ -115,6 +158,15 @@ void handleRootNormal() {
   page += ledOn ? "RAIN" : "CLEAR";
   page += "</div>";
 
+  page += "<hr>";
+  page += "<div class='location-section'>";
+  page += "<h4>📍 Location</h4>";
+  page += "<form action='/save-location' method='GET' class='location-form'>";
+  page += "<input type='text' name='location' value='" + location + "' placeholder='City name' class='location-input' required>";
+  page += "<button type='submit' class='btn btn-primary'>Update</button>";
+  page += "</form>";
+  page += "<div class='location-display'>Current: " + location + "</div>";
+  page += "</div>";
   page += "<hr>";
   page += "<h3 class='logs-title'>Recent API calls</h3>";
   page += buildLogsHtml();
@@ -148,12 +200,26 @@ void handleCall() {
   server.send(302, "text/plain", "");
 }
 
+void handleSaveLocation() {
+  String newLocation = server.arg("location");
+  newLocation.trim();
+  if (newLocation.length() > 0) {
+    saveLocation(newLocation);
+    addLog("📍 Location updated to: " + newLocation);
+    callApi();
+    lastApiCheck = millis();
+  }
+  server.sendHeader("Location", "/", true);
+  server.send(302, "text/plain", "");
+}
+
 void startNormalModeServer() {
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
   server.on("/", handleRootNormal);
   server.on("/reset", handleReset);
   server.on("/call", handleCall);
+  server.on("/save-location", handleSaveLocation);
   server.begin();
   addLog("🌐 lepetitparapluie server started");
 }
@@ -164,6 +230,7 @@ void callApi() {
     return;
   }
 
+  String apiUrl = buildApiUrl();
   HTTPClient http;
   int code = -1;
 
@@ -280,6 +347,7 @@ void setup() {
   delay(400);
   Serial.println();
   Serial.println("🚀 Booting lepetitparapluie...");
+  loadLocation();
   if (connectUsingSavedCredentials()) {
     startNormalModeServer();
     callApi();
