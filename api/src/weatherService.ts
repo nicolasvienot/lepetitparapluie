@@ -30,7 +30,7 @@ export async function getWeatherData(location?: string): Promise<WeatherResponse
     location = await getCityFromIP();
   }
 
-  console.log('Location:', location);
+  console.log(`🌤️  Fetching weather for: ${location}`);
   
   // Build URL based on location parameter
   const encodedLocation = location.replace(/\s+/g, '+');
@@ -101,6 +101,9 @@ export async function getWeatherData(location?: string): Promise<WeatherResponse
       rain_hours: rainHours
     }
   };
+  
+  const rainIcon = weatherData.will_rain_today ? '☔' : '✨';
+  console.log(`${rainIcon} ${resolvedLocation}: ${parseFloat(now.temp_C)}°C, Rain: ${weatherData.will_rain_today ? 'Yes' : 'No'}`);
   
   return weatherData;
 }

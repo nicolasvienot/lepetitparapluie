@@ -16,6 +16,8 @@ export interface LocationInfo {
  */
 export async function getLocationFromIP(): Promise<LocationInfo> {
   try {
+    console.log('📍 Detecting location from IP...');
+    
     // Using ip-api.com - free for non-commercial use, no API key required
     const response = await axios.get('http://ip-api.com/json/?fields=status,message,country,countryCode,region,regionName,city,zip,lat,lon,timezone,query');
     
@@ -25,7 +27,7 @@ export async function getLocationFromIP(): Promise<LocationInfo> {
       throw new Error(data.message || 'Failed to get location data');
     }
     
-    return {
+    const locationInfo = {
       ip: data.query,
       city: data.city || 'Unknown',
       region: data.regionName || data.region || 'Unknown',
@@ -34,7 +36,12 @@ export async function getLocationFromIP(): Promise<LocationInfo> {
       latitude: data.lat || 0,
       longitude: data.lon || 0
     };
+    
+    console.log(`📍 Detected: ${locationInfo.city}, ${locationInfo.country}`);
+    
+    return locationInfo;
   } catch (error) {
+    console.error('❌ Location detection failed:', error instanceof Error ? error.message : 'Unknown error');
     throw new Error(`Failed to detect location: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
