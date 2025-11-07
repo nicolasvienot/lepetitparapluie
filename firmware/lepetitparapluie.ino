@@ -12,6 +12,11 @@ const char* CONFIG_DOMAIN = "lepetitparapluie.config";
 const int LED_PIN = LED_BUILTIN;
 bool ledOn = false;
 
+void logRequest(const String& path) {
+  Serial.print("➡️  HTTP ");
+  Serial.println(path);
+}
+
 bool saveWiFiCredentials(const String& ssid, const String& pass) {
   if (!LittleFS.begin()) return false;
   File f = LittleFS.open("/wifi.txt", "w");
@@ -56,10 +61,10 @@ String ledPage() {
   return page;
 }
 
-void handleRootNormal() { server.send(200, "text/html", ledPage()); }
-void handleOn() { ledOn = true; digitalWrite(LED_PIN, LOW); server.send(200, "text/html", ledPage()); }
-void handleOff() { ledOn = false; digitalWrite(LED_PIN, HIGH); server.send(200, "text/html", ledPage()); }
-void handleReset() { eraseWiFiCredentials(); server.send(200, "text/html", "<html><body><h1>WiFi reset</h1><p>Rebooting...</p></body></html>"); delay(2000); ESP.restart(); }
+void handleRootNormal() { logRequest("/"); server.send(200, "text/html", ledPage()); }
+void handleOn() { logRequest("/on"); ledOn = true; digitalWrite(LED_PIN, LOW); server.send(200, "text/html", ledPage()); }
+void handleOff() { logRequest("/off"); ledOn = false; digitalWrite(LED_PIN, HIGH); server.send(200, "text/html", ledPage()); }
+void handleReset() { logRequest("/reset"); eraseWiFiCredentials(); server.send(200, "text/html", "<html><body><h1>WiFi reset</h1><p>Rebooting...</p></body></html>"); delay(2000); ESP.restart(); }
 
 void startNormalModeServer() {
   pinMode(LED_PIN, OUTPUT);
@@ -68,6 +73,7 @@ void startNormalModeServer() {
   server.on("/on", handleOn);
   server.on("/off", handleOff);
   server.on("/reset", handleReset);
+  server.onNotFound([]() { logRequest("404 " + server.uri()); server.sendHeader("Location", "/", true); server.send(302, "text/plain", ""); });
   server.begin();
   Serial.println("🌐 lepetitparapluie web server started");
 }
@@ -100,9 +106,10 @@ String configPage(bool showError, const String& errorMsg) {
   return page;
 }
 
-void handleConfigRoot() { server.send(200, "text/html", configPage(false, "")); }
+void handleConfigRoot() { logRequest("/"); server.send(200, "text/html", configPage(false, "")); }
 
 void handleSaveConfig() {
+  logRequest("/save");
   String ssid = server.arg("ssid");
   String pass = server.arg("pass");
   if (ssid.length() == 0) { server.send(200, "text/html", configPage(true, "SSID required.")); return; }
@@ -125,7 +132,7 @@ void handleSaveConfig() {
   }
 }
 
-void handleNotFound() { server.sendHeader("Location", String("http://") + CONFIG_DOMAIN, true); server.send(302, "text/plain", ""); }
+void handleNotFound() { logRequest("404 " + server.uri()); server.sendHeader("Location", String("http://") + CONFIG_DOMAIN, true); server.send(302, "text/plain", ""); }
 
 void startConfigModeAP() {
   WiFi.mode(WIFI_AP_STA);
@@ -162,7 +169,8 @@ bool connectUsingSavedCredentials() {
 void setup() {
   Serial.begin(9600);
   delay(400);
-  Serial.println(); Serial.println("🚀 Booting lepetitparapluie...");
+  Serial.println();
+  Serial.println("🚀 Booting lepetitparapluie...");
   if (connectUsingSavedCredentials()) startNormalModeServer();
   else startConfigModeAP();
 }
