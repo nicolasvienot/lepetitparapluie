@@ -1,0 +1,41 @@
+### Weather API Tests
+
+# Base URL
+@baseUrl = http://localhost:3000
+
+### Test hello endpoint
+GET {{baseUrl}}/api/hello
+
+###
+### Full Weather Data Endpoint
+###
+
+### Get weather for auto-detected location (based on IP)
+GET {{baseUrl}}/api/weather
+
+### Get weather for Paris
+GET {{baseUrl}}/api/weather?location=Paris
+
+### Get weather for New York
+GET {{baseUrl}}/api/weather?location=New York
+
+###
+### Simple Rain Check Endpoint (only returns will_rain_today boolean)
+### Automatically detects your city from IP if no location is provided
+###
+
+### Will it rain today? (auto-detected location from IP)
+GET {{baseUrl}}/api/will-it-rain
+
+### Will it rain in Paris today?
+GET {{baseUrl}}/api/will-it-rain?location=Paris
+
+### Will it rain in New York today?
+GET {{baseUrl}}/api/will-it-rain?location=New York
+
+### Will it rain in Tokyo today?
+GET {{baseUrl}}/api/will-it-rain?location=Tokyo
+
+### Will it rain in London today?
+GET {{baseUrl}}/api/will-it-rain?location=London
+
